@@ -1,11 +1,6 @@
 use crate::{utils::encode_svg, Icon, IconInfo, IconKind, CLIENT};
 use future::join_all;
-use futures::StreamExt;
 use futures::{prelude::*, task::noop_waker};
-use html5ever::{
-  driver,
-  tendril::{Tendril, TendrilSink},
-};
 use reqwest::{header::*, IntoUrl};
 use scraper::{ElementRef, Html};
 use serde::Deserialize;
@@ -83,22 +78,14 @@ impl Icons {
   }
 
   pub async fn load_website<U: IntoUrl>(&mut self, url: U) -> Result<(), Box<dyn Error>> {
-    let res = CLIENT.get(url).header(ACCEPT, "text/html").send().await?;
+    let res = CLIENT.get(url).header(ACCEPT, "text/html").send().await.unwrap();
     let url = res.url().clone();
-    let mut body = res.bytes_stream();
-
-    let mut parser = driver::parse_document(Html::new_document(), Default::default());
-    while let Some(data) = body.next().await {
-      if let Ok(data) = Tendril::try_from_byte_slice(&data?) {
-        parser.process(data)
-      }
-    }
-    let document = parser.finish();
-
+    let body = res.text().await.unwrap_or("".to_owned()).to_owned();
+    let fragment = Html::parse_document(&body);
     {
       let mut found_favicon = false;
 
-      for elem_ref in document.select(selector!(
+      for elem_ref in fragment.select(selector!(
         "link[rel='icon']",
         "link[rel='shortcut icon']",
         "link[rel='apple-touch-icon']",
@@ -127,7 +114,7 @@ impl Icons {
     }
 
     {
-      let mut logos: Vec<_> = document
+      let mut logos: Vec<_> = fragment
         .select(selector!(
           "header img, header svg",
           "img[src*=logo]",
@@ -207,15 +194,15 @@ impl Icons {
       }
     }
 
-    for elem_ref in document.select(selector!("link[rel='manifest']")) {
-      if let Some(href) = elem_ref
-        .value()
-        .attr("href")
-        .and_then(|href| url.join(&href).ok())
-      {
-        warn_err!(self.load_manifest(href).await, "failed to fetch manifest");
-      }
-    }
+    // for elem_ref in fragment.select(selector!("link[rel='manifest']")) {
+    //   if let Some(href) = elem_ref
+    //     .value()
+    //     .attr("href")
+    //     .and_then(|href| url.join(&href).ok())
+    //   {
+    //     warn_err!(self.load_manifest(href).await, "failed to fetch manifest");
+    //   }
+    // }
 
     Ok(())
   }
