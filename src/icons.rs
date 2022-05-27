@@ -78,10 +78,11 @@ impl Icons {
   }
 
   pub async fn load_website<U: IntoUrl>(&mut self, url: U) -> Result<(), Box<dyn Error>> {
-    let res = CLIENT.get(url).header(ACCEPT, "text/html").send().await.unwrap();
+    let res = CLIENT.get(url).header(ACCEPT, "text/html").send().await?;
     let url = res.url().clone();
     let body = res.text().await.unwrap_or("".to_owned()).to_owned();
     let fragment = Html::parse_document(&body);
+    self.load_manifest(url::Url::parse("https://google.com").unwrap()).await.unwrap();
     {
       let mut found_favicon = false;
 
@@ -194,15 +195,20 @@ impl Icons {
       }
     }
 
-    // for elem_ref in fragment.select(selector!("link[rel='manifest']")) {
+    // let mut manifest_url = None;
+    // for elem_ref in fragment.clone().select(selector!("link[rel='manifest']")) {
     //   if let Some(href) = elem_ref
     //     .value()
     //     .attr("href")
     //     .and_then(|href| url.join(&href).ok())
     //   {
-    //     warn_err!(self.load_manifest(href).await, "failed to fetch manifest");
+    //     manifest_url = Some(href);
     //   }
     // }
+    // if let Some(href) = manifest_url {
+    //   self.load_website(href).await;
+    // }
+    
 
     Ok(())
   }

@@ -50,8 +50,7 @@ static CLIENT: Lazy<Client> = Lazy::new(|| {
 #[cfg(test)]
 mod tests {
   use super::*;
-  #[tokio::test]
-  async fn test_icons() {
+  async fn get_icons() -> Vec<Icon> {
     let mut icons = Icons::new();
     // scrape the icons from a url
     icons.load_website("https://github.com").await.unwrap();
@@ -60,26 +59,13 @@ mod tests {
     let entries = icons.entries().await;
 
     // entries are sorted from highest to lowest resolution
-    for icon in &entries {
-      println!("{:?}", icon)
-    }
-    println!("total entries: {}", entries.len());
-    assert_eq!(entries.len() > 0, true);
+    return entries;
   }
 
-  async fn get_icons() {
-    let mut icons = Icons::new();
-    // scrape the icons from a url
-    icons.load_website("https://github.com").await.unwrap();
-
-    // fetch all icons, ensuring they exist & determining size
-    let entries = icons.entries().await;
-
-    // entries are sorted from highest to lowest resolution
-    for icon in &entries {
-      println!("{:?}", icon)
-    }
-    println!("total entries: {}", entries.len());
+  #[tokio::test]
+  async fn test_icons() {
+    let entries = get_icons().await;
+    assert_eq!(entries.len() > 0, true);
   }
 
   #[tokio::test]
